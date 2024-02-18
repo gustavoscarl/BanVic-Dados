@@ -8,6 +8,7 @@ from plotly import express as px
 
 contas = pd.read_csv('./contas.csv')
 agencias = pd.read_csv('./agencias.csv')
+clientes = pd.read_csv('./clientes.csv')
 transacoes = pd.read_csv('./transacoes.csv')
 financiamentos = pd.read_csv('./propostas_credito.csv')
 transacoes['ano'] = transacoes['data_transacao'].str[:4]  # Extrai o ano
@@ -17,7 +18,7 @@ opcoes_ano = [{'label': ano, 'value': ano} for ano in transacoes_por_ano['ano'].
 
 app = dash.Dash(__name__)
 
-total_clientes = contas['cod_cliente'].nunique()
+total_clientes = clientes['cod_cliente'].nunique()
 total_transacoes = transacoes['num_conta'].nunique()
 saldo_total_texto = f"R$ {contas['saldo_total'].sum():,.2f}"
 total_credito_aprovado = financiamentos[financiamentos['status_proposta'] == 'Aprovada']['valor_financiamento'].sum()
@@ -58,10 +59,11 @@ app.layout = html.Div([
             id='ano-dropdown',
             placeholder='Selecione o(s) Ano(s)',
             options=opcoes_ano,
-            value=[opcoes_ano[-1]['value']],
+            value=[opcoes_ano[0]['value']],
             multi=True  # Valor padrão é o primeiro ano disponível
             )
         ]),
+    dcc.Graph(id='grafico-novos-clientes-ano'),
     dcc.Graph(id='grafico-transacoes-ano'),
     html.Div([
         dcc.Checklist(
@@ -277,6 +279,16 @@ def update_graphs(selected_agencias):
 
 
 def update_transactions_by_year(selected_anos):
+    if not selected_anos:  # Verifica se a lista de anos selecionados está vazia
+        # Retorna um gráfico vazio ou com mensagem indicando a seleção
+        fig = go.Figure()
+        fig.add_annotation(text="Nenhum ano selecionado. Por favor, selecione um ou mais anos.",
+                           xref="paper", yref="paper",
+                           x=0.5, y=0.5, showarrow=False,
+                           font=dict(size=16))
+        fig.update_layout(xaxis=dict(showgrid=False, showticklabels=False, zeroline=False),
+                          yaxis=dict(showgrid=False, showticklabels=False, zeroline=False))
+        return fig
     
     transacoes_filtradas = transacoes[transacoes['ano'].isin(selected_anos)].copy()
 
@@ -288,8 +300,33 @@ def update_transactions_by_year(selected_anos):
     
     # Cria o gráfico de barras
     fig = px.bar(soma_valor_por_ano, x='ano', y='soma_valor_transacao',
-                 title=(f'Gráfico de Valor Total em Crédito para o Ano {str(selected_anos)}'),
+                 title=(f'Gráfico de Valor Total em Crédito para Ano Selecionado'),
                  labels={'soma_valor_transacao': 'Valor Total de Transações', 'ano': 'Ano'})
+    return fig
+
+@app.callback(
+    Output('grafico-novos-clientes-ano', 'figure'),
+    [Input('ano-dropdown', 'value')]
+)
+def update_new_clients_by_year(selected_anos):
+    if not selected_anos:  # Verifica se a lista de anos selecionados está vazia
+        # Retorna um gráfico vazio ou com mensagem indicando a seleção
+        fig = go.Figure()
+        fig.add_annotation(text="Nenhum ano selecionado. Por favor, selecione um ou mais anos.",
+                           xref="paper", yref="paper",
+                           x=0.5, y=0.5, showarrow=False,
+                           font=dict(size=16))
+        fig.update_layout(xaxis=dict(showgrid=False, showticklabels=False, zeroline=False),
+                          yaxis=dict(showgrid=False, showticklabels=False, zeroline=False))
+        return fig
+    
+    clientes['ano_inclusao'] = clientes['data_inclusao'].str[:4]
+    clientes_filtrados = clientes[clientes['ano_inclusao'].isin(selected_anos)]
+    clientes_por_ano = clientes_filtrados.groupby('ano_inclusao')['cod_cliente'].nunique().reset_index(name='total_novos_clientes')
+    
+    fig = px.bar(clientes_por_ano, x='ano_inclusao', y='total_novos_clientes',
+                 title='Total de Novos Clientes por Ano Selecionado',
+                 labels={'ano_inclusao': 'Ano de Inclusão', 'total_novos_clientes': 'Total de Novos Clientes por Ano Selecionado'})
     return fig
 
 if __name__ == '__main__':
