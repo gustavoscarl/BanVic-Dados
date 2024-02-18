@@ -4,6 +4,7 @@ from dash import html
 from dash.dependencies import Input, Output, State
 import plotly.graph_objs as go
 import pandas as pd
+from datetime import datetime, timedelta
 
 contas = pd.read_csv('./contas.csv')
 agencias = pd.read_csv('./agencias.csv')
@@ -17,6 +18,8 @@ total_transacoes = transacoes['num_conta'].nunique()
 saldo_total_texto = f"R$ {contas['saldo_total'].sum():,.2f}"
 total_credito_aprovado = financiamentos[financiamentos['status_proposta'] == 'Aprovada']['valor_financiamento'].sum()
 total_credito_pendente = financiamentos[financiamentos['status_proposta'] != 'Aprovada']['valor_financiamento'].sum();
+default_start_date = datetime.now() - timedelta(days=30)
+default_end_date = datetime.now()
 
 
 app.layout = html.Div([
@@ -46,6 +49,19 @@ app.layout = html.Div([
         html.P(f"R$ {total_credito_pendente:,.2f}")
     ], style={'border': '1px solid #ddd', 'padding': '20px', 'margin': '10px', 'border-radius': '5px', 'background-color': '#f9f9f9'}),
     ], style={'display': 'flex', 'justify-content': 'space-around', 'margin-top': '150px', 'text-align' : 'center', 'font-family': 'Trebuchet MS, sans-serif',}),
+     html.Div([
+      html.H1('Dashboard do BanVic', style={'text-align': 'center', 'margin-top': '50px'}),
+      dcc.DatePickerRange(id='filtro-data',
+                          start_date_placeholder_text='Data Inicial',
+                          end_date_placeholder_text='Data Final',
+                          initial_visible_month=transacoes['data_transacao'].min(),
+                          start_date=transacoes['data_transacao'].min(),
+                          end_date=transacoes['data_transacao'].max()),
+      dcc.Dropdown(id='filtro-agencia', placeholder='Selecione Agência...', options=[{'label': i, 'value': i} for i in agencias['cod_agencia'].unique()], multi=True),
+      dcc.Dropdown(id='filtro-cliente', placeholder='Selecione Cliente...', options=[{'label': i, 'value': i} for i in contas['cod_cliente'].unique()], multi=True),
+      html.Div(id='kpi-container'),
+      dcc.Graph(id='grafico-kpis')
+    ]),
     # Checkbox para Selecionar/Desmarcar Todas as Agências
     html.Div([
         dcc.Checklist(
@@ -114,7 +130,8 @@ def selecionar_desmarcar_todas(selected_all, options):
      Output('grafico-transacoes-tipo', 'figure'),
      Output('grafico-ratio-clientes', 'figure')],
     [Input('agencia-checklist', 'value')]
-) 
+)
+
 
 
 def update_graphs(selected_agencias):
