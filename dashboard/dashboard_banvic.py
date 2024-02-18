@@ -4,11 +4,16 @@ from dash import html
 from dash.dependencies import Input, Output, State
 import plotly.graph_objs as go
 import pandas as pd
+from plotly import express as px
 
 contas = pd.read_csv('./contas.csv')
 agencias = pd.read_csv('./agencias.csv')
 transacoes = pd.read_csv('./transacoes.csv')
 financiamentos = pd.read_csv('./propostas_credito.csv')
+transacoes['ano'] = transacoes['data_transacao'].str[:4]  # Extrai o ano
+transacoes_filtradas = transacoes[transacoes['nome_transacao'].isin(['Compra Crédito', 'Transferência entre CC - Crédito'])]
+transacoes_por_ano = transacoes_filtradas.groupby('ano').size().reset_index(name='total_transacoes')
+opcoes_ano = [{'label': ano, 'value': ano} for ano in transacoes_por_ano['ano'].unique()]
 
 app = dash.Dash(__name__)
 
@@ -16,7 +21,8 @@ total_clientes = contas['cod_cliente'].nunique()
 total_transacoes = transacoes['num_conta'].nunique()
 saldo_total_texto = f"R$ {contas['saldo_total'].sum():,.2f}"
 total_credito_aprovado = financiamentos[financiamentos['status_proposta'] == 'Aprovada']['valor_financiamento'].sum()
-total_credito_pendente = financiamentos[financiamentos['status_proposta'] != 'Aprovada']['valor_financiamento'].sum();
+total_credito_pendente = financiamentos[financiamentos['status_proposta'] != 'Aprovada']['valor_financiamento'].sum()
+
 
 
 app.layout = html.Div([
@@ -45,8 +51,18 @@ app.layout = html.Div([
         html.H3('Total de Crédito Pendente'),
         html.P(f"R$ {total_credito_pendente:,.2f}")
     ], style={'border': '1px solid #ddd', 'padding': '20px', 'margin': '10px', 'border-radius': '5px', 'background-color': '#f9f9f9'}),
-    ], style={'display': 'flex', 'justify-content': 'space-around', 'margin-top': '150px', 'text-align' : 'center', 'font-family': 'Trebuchet MS, sans-serif',}),
-    # Checkbox para Selecionar/Desmarcar Todas as Agências
+    ], style={'display': 'flex', 'justify-content': 'space-around', 'margin-top': '150px', 'margin-bottom': '100px', 'text-align' : 'center', 'font-family': 'Trebuchet MS, sans-serif',}),
+        html.H2("Selecione o Ano", style={'textAlign': 'center'}),
+        html.Div([
+            dcc.Dropdown(
+            id='ano-dropdown',
+            placeholder='Selecione o(s) Ano(s)',
+            options=opcoes_ano,
+            value=[opcoes_ano[-1]['value']],
+            multi=True  # Valor padrão é o primeiro ano disponível
+            )
+        ]),
+    dcc.Graph(id='grafico-transacoes-ano'),
     html.Div([
         dcc.Checklist(
             id='selecionar-todas-checkbox',
@@ -116,8 +132,9 @@ def selecionar_desmarcar_todas(selected_all, options):
     [Input('agencia-checklist', 'value')]
 ) 
 
-
 def update_graphs(selected_agencias):
+    
+
 
     # Gráfico 1 - Taxa de Financiamentos Aprovados/Cliente
     financiamentos_aprovados = financiamentos[financiamentos['status_proposta'] == 'Aprovada']
@@ -250,6 +267,30 @@ def update_graphs(selected_agencias):
     # Substitua o retorno adequado para incluir grafico_ratio_financiamento
     
     return grafico_financiamentos, grafico_media_saldo, grafico_transacoes_credito_por_agencia, grafico_ratio_clientes
+
+
+@app.callback(
+    Output('grafico-transacoes-ano', 'figure'),
+    [Input('ano-dropdown', 'value')]
+)
+
+
+
+def update_transactions_by_year(selected_anos):
+    
+    transacoes_filtradas = transacoes[transacoes['ano'].isin(selected_anos)].copy()
+
+    # Converter valores de transação para absolutos de forma segura
+    transacoes_filtradas.loc[:, 'valor_transacao'] = transacoes_filtradas['valor_transacao'].abs()
+
+    # Agora, você pode proceder com a agregação (soma) corretamente sem o aviso
+    soma_valor_por_ano = transacoes_filtradas.groupby('ano')['valor_transacao'].sum().reset_index(name='soma_valor_transacao')
+    
+    # Cria o gráfico de barras
+    fig = px.bar(soma_valor_por_ano, x='ano', y='soma_valor_transacao',
+                 title=(f'Gráfico de Valor Total em Crédito para o Ano {str(selected_anos)}'),
+                 labels={'soma_valor_transacao': 'Valor Total de Transações', 'ano': 'Ano'})
+    return fig
 
 if __name__ == '__main__':
   app.run_server(debug=True)
