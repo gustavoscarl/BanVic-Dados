@@ -1,7 +1,0 @@
-dicas Acácio:
-
-preditiva é um modelo para prever algo no futuro.
-análise de CRM, campanhas de ação, captação ou fidelização de clientes, análise para RH, numero de colaboradores
-verificar agencia digital x física, numero de credito x debito, expandir perfil para regiao, agencia.
-ver publico q vai na agencia física tem mais propensão a realizar financiamento.
-criar nova parte da tabela com agencia fisica x agencia digital (ouvir audios para realizar as medias e calculos)
