@@ -6,6 +6,8 @@ import plotly.graph_objs as go
 import pandas as pd
 from plotly import express as px
 
+
+
 contas = pd.read_csv('./contas.csv')
 agencias = pd.read_csv('./agencias.csv')
 clientes = pd.read_csv('./clientes.csv')
@@ -17,6 +19,8 @@ transacoes_por_ano = transacoes_filtradas.groupby('ano').size().reset_index(name
 opcoes_ano = [{'label': ano, 'value': ano} for ano in transacoes_por_ano['ano'].unique()]
 
 app = dash.Dash(__name__)
+
+server = app.server
 
 total_clientes = clientes['cod_cliente'].nunique()
 total_transacoes = transacoes['num_conta'].nunique()

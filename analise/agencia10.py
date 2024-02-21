@@ -7,12 +7,14 @@ colaborador_agencia = pd.read_csv('colaborador_agencia.csv')
 # Filtrar apenas as propostas aprovadas
 propostas_aprovadas = propostas_credito[propostas_credito['status_proposta'] == 'Aprovada']
 
+
 # Associar cada proposta aprovada ao seu respectivo colaborador e agência
 propostas_colaboradores_agencia = pd.merge(propostas_aprovadas, colaborador_agencia, on='cod_colaborador')
 
 # Filtrar os colaboradores da agência 10
 propostas_agencia_10 = propostas_colaboradores_agencia[propostas_colaboradores_agencia['cod_agencia'] == 10]
-
+print(propostas_agencia_10)
+print(len(propostas_agencia_10['cod_cliente'].unique()))
 # Calcular o valor total das propostas aprovadas por colaborador na agência 10
 valor_total_por_colaborador = propostas_agencia_10.groupby('cod_colaborador')['valor_financiamento'].sum()
 
